@@ -1,5 +1,9 @@
-
 import React, { useState } from "react";
+
+const SCALE = [0, 10, 30, 50, 70];
+function clampIndex(n) {
+  return Math.min(Math.max(n, 0), SCALE.length - 1);
+}
 
 export default function CznSaveDataCalculator() {
   const [tier, setTier] = useState(1);
@@ -29,7 +33,6 @@ export default function CznSaveDataCalculator() {
                   id: Date.now(),
                   type: "neutralCard",
                   subtype: "",
-                  count: 1,
                   isCharacterCard: false,
                   notes: "",
                 },
@@ -58,22 +61,33 @@ export default function CznSaveDataCalculator() {
     );
   };
 
-  const pointsForRow = (row) => {
+  const pointsForRow = (row, indexOfSameTypeBefore = 0) => {
     switch (row.type) {
       case "neutralCard":
-        return 20 * row.count;
+        return 20;
       case "monsterCard":
-        return 80 * row.count;
+        return 80;
       case "forbiddenCard":
-        return 20 * row.count;
+        return 20;
       case "regularEpiphany":
-        return 10 * row.count;
+        if (row.isCharacterCard) return 0;
+        if (row.subtype === "neutral" || row.subtype === "monster") return 10;
+        return 0;
       case "divineEpiphany":
-        return 20 * row.count;
-      case "cardRemoval":
-      case "duplication":
-      case "conversion":
-        return 10 * row.count;
+        return 20;
+      case "cardRemoval": {
+        const idx = clampIndex(indexOfSameTypeBefore);
+        const base = SCALE[idx];
+        const charBonus = row.isCharacterCard ? 20 : 0;
+        return base + charBonus;
+      }
+      case "duplication": {
+        const idx = clampIndex(indexOfSameTypeBefore);
+        return SCALE[idx];
+      }
+      case "conversion": {
+        return 10;
+      }
       default:
         return 0;
     }
@@ -82,55 +96,62 @@ export default function CznSaveDataCalculator() {
   return (
     <div className="min-h-screen bg-[#0b0f19] text-gray-100 p-6 font-sans">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-white">CZN Save Data Calculator</h1>
+        <h1 className="text-3xl font-bold mb-2 text-white">CZN Save Data Calculator</h1>
+        <p className="text-sm text-yellow-300 mb-6 bg-[#1e2533] p-3 rounded-lg border border-yellow-500">
+          💡 <strong>TIP:</strong> If you convert a character's card before removing it, you save 10 points. <br />
+          Example: Removing 3 basic cards from a single character costs <strong>20 + 30 + 50 = 100</strong> points, but converting them to neutral cards and then removing them only costs <strong>(10×3) + 0 + 10 + 30 = 70</strong> points.
+        </p>
 
-        {/* Run Setup */}
         <div className="bg-[#141a26] border border-[#1f2937] rounded-2xl p-6 mb-6 shadow-lg">
           <h2 className="text-xl font-semibold mb-4 text-white">Run Setup</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-1">Run Tier</label>
+              <label className="block text-gray-300 text-sm mb-1">Tier</label>
               <input
                 type="number"
-                min={1}
+                min="1"
                 value={tier}
-                onChange={(e) => setTier(parseInt(e.target.value) || 1)}
-                className="w-full p-2 rounded-md bg-[#1e2533] text-white border border-[#2d3748] focus:ring-2 focus:ring-blue-500 outline-none"
+                onChange={(e) => setTier(Number(e.target.value))}
+                className="bg-[#1e2533] border border-[#2d3748] rounded-md p-2 w-full text-white"
               />
               <p className="text-xs text-gray-400 mt-1">Determines base point limit per character run.</p>
             </div>
+
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-1">Nightmare Mode</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={nightmare}
-                  onChange={(e) => setNightmare(e.target.checked)}
-                  className="accent-blue-500 w-4 h-4"
-                />
-                <span className="text-sm">(+1 Tier)</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">Adds +1 Tier to your base point limit when enabled.</p>
+              <label className="block text-gray-300 text-sm mb-1">Nightmare Mode</label>
+              <input
+                type="checkbox"
+                checked={nightmare}
+                onChange={(e) => setNightmare(e.target.checked)}
+                className="accent-blue-500 scale-125"
+              />
+              <p className="text-xs text-gray-400">(+1 Tier) Adds +1 Tier to your base point limit when enabled.</p>
             </div>
+
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-1">Codex Modifier</label>
+              <label className="block text-gray-300 text-sm mb-1">Codex Modifier</label>
               <select
                 value={codex}
-                onChange={(e) => setCodex(parseInt(e.target.value))}
-                className="w-full p-2 rounded-md bg-[#1e2533] text-white border border-[#2d3748] focus:ring-2 focus:ring-blue-500 outline-none"
+                onChange={(e) => setCodex(Number(e.target.value))}
+                className="bg-[#1e2533] border border-[#2d3748] rounded-md p-2 w-full text-white"
               >
-                <option value={0}>None</option>
-                <option value={1}>+1 Tier</option>
-                <option value={2}>+2 Tiers</option>
+                <option value="0">None</option>
+                <option value="1">+1 Tier</option>
+                <option value="2">+2 Tiers</option>
               </select>
-              <p className="text-xs text-gray-400 mt-1">Codex modifiers increase run Tier (+1 or +2).</p>
+              <p className="text-xs text-gray-400 mt-1">💡 Codex modifiers increase effective Tier, raising your point limit.</p>
             </div>
           </div>
         </div>
 
-        {/* Character Tables */}
         {characters.map((char) => {
-          const totalPoints = char.rows.reduce((acc, r) => acc + pointsForRow(r), 0);
+          let totalPoints = 0;
+          for (let i = 0; i < char.rows.length; i++) {
+            const row = char.rows[i];
+            const idxBefore = char.rows.slice(0, i).filter((r) => r.type === row.type).length;
+            totalPoints += pointsForRow(row, idxBefore);
+          }
+
           const limit = baseLimit(tier, nightmare, codex);
           const overCap = totalPoints > limit;
 
@@ -152,7 +173,6 @@ export default function CznSaveDataCalculator() {
                     <tr>
                       <th className="px-3 py-2 text-left">Type</th>
                       <th className="px-3 py-2 text-left">Subtype</th>
-                      <th className="px-3 py-2 text-left">Count</th>
                       <th className="px-3 py-2 text-left">Character Card</th>
                       <th className="px-3 py-2 text-left">Notes</th>
                       <th className="px-3 py-2 text-left">Points</th>
@@ -162,73 +182,113 @@ export default function CznSaveDataCalculator() {
                   <tbody className="bg-[#1b2230]">
                     {char.rows.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="text-center py-6 text-gray-500">
+                        <td colSpan="6" className="text-center py-6 text-gray-500">
                           No data. Add actions to begin.
                         </td>
                       </tr>
                     ) : (
-                      char.rows.map((row) => (
-                        <tr key={row.id} className="hover:bg-[#222b3d]">
-                          <td className="px-3 py-2">
-                            <select
-                              value={row.type}
-                              onChange={(e) => updateRow(char.id, row.id, { type: e.target.value })}
-                              className="bg-[#1e2533] border border-[#2d3748] rounded-md p-1 text-white w-full"
-                            >
-                              <option value="neutralCard">Neutral Card</option>
-                              <option value="monsterCard">Monster Card</option>
-                              <option value="forbiddenCard">Forbidden Card</option>
-                              <option value="regularEpiphany">Regular Epiphany</option>
-                              <option value="divineEpiphany">Divine Epiphany</option>
-                              <option value="cardRemoval">Card Removal</option>
-                              <option value="duplication">Card Duplication</option>
-                              <option value="conversion">Card Conversion</option>
-                            </select>
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="text"
-                              value={row.subtype}
-                              onChange={(e) => updateRow(char.id, row.id, { subtype: e.target.value })}
-                              className="bg-[#1e2533] border border-[#2d3748] rounded-md p-1 text-white w-full"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="number"
-                              value={row.count}
-                              min={1}
-                              onChange={(e) => updateRow(char.id, row.id, { count: parseInt(e.target.value) || 1 })}
-                              className="bg-[#1e2533] border border-[#2d3748] rounded-md p-1 text-white w-full"
-                            />
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <input
-                              type="checkbox"
-                              checked={row.isCharacterCard}
-                              onChange={(e) => updateRow(char.id, row.id, { isCharacterCard: e.target.checked })}
-                              className="accent-blue-500"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="text"
-                              value={row.notes}
-                              onChange={(e) => updateRow(char.id, row.id, { notes: e.target.value })}
-                              className="bg-[#1e2533] border border-[#2d3748] rounded-md p-1 text-white w-full"
-                            />
-                          </td>
-                          <td className="px-3 py-2 text-blue-400 font-semibold">{pointsForRow(row)}</td>
-                          <td className="px-3 py-2 text-center">
-                            <button
-                              onClick={() => removeRow(char.id, row.id)}
-                              className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded-md text-xs text-white"
-                            >
-                              X
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      char.rows.map((row, i) => {
+                        const idxBefore = char.rows.slice(0, i).filter((r) => r.type === row.type).length;
+                        return (
+                          <tr key={row.id} className="hover:bg-[#222b3d]">
+                            <td className="px-3 py-2">
+                              <select
+                                value={row.type}
+                                onChange={(e) => updateRow(char.id, row.id, { type: e.target.value, subtype: "" })}
+                                className="bg-[#1e2533] border border-[#2d3748] rounded-md p-1 text-white w-full"
+                              >
+                                <option value="neutralCard">Neutral Card</option>
+                                <option value="monsterCard">Monster Card</option>
+                                <option value="forbiddenCard">Forbidden Card</option>
+                                <option value="regularEpiphany">Regular Epiphany</option>
+                                <option value="divineEpiphany">Divine Epiphany</option>
+                                <option value="cardRemoval">Card Removal</option>
+                                <option value="duplication">Card Duplication</option>
+                                <option value="conversion">Card Conversion</option>
+                              </select>
+                            </td>
+
+                            <td className="px-3 py-2">
+                              {row.type === "cardRemoval" ? (
+                                <select
+                                  value={row.subtype}
+                                  onChange={(e) => updateRow(char.id, row.id, { subtype: e.target.value })}
+                                  className="bg-[#1e2533] border border-[#2d3748] rounded-md p-1 text-white w-full"
+                                >
+                                  {row.isCharacterCard ? (
+                                    <>
+                                      <option value="starter">Starter Card</option>
+                                      <option value="divineEpiphany">Divine Epiphany</option>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <option value="starter">Starter Card</option>
+                                      <option value="commonCard">Common Card</option>
+                                      <option value="neutralCard">Neutral Card</option>
+                                      <option value="monsterCard">Monster Card</option>
+                                      <option value="divineEpiphany">Divine Epiphany</option>
+                                      <option value="regularEpiphany">Regular Epiphany</option>
+                                    </>
+                                  )}
+                                </select>
+                              ) : row.type === "regularEpiphany" ? (
+                                <select
+                                  value={row.subtype}
+                                  onChange={(e) => updateRow(char.id, row.id, { subtype: e.target.value })}
+                                  className="bg-[#1e2533] border border-[#2d3748] rounded-md p-1 text-white w-full"
+                                >
+                                  {row.isCharacterCard ? (
+                                    <>
+                                      <option value="starter">Starter/Epiphany Card</option>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <option value="neutral">Neutral Card</option>
+                                      <option value="monster">Monster Card</option>
+                                    </>
+                                  )}
+                                </select>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={row.subtype}
+                                  onChange={(e) => updateRow(char.id, row.id, { subtype: e.target.value })}
+                                  className="bg-[#1e2533] border border-[#2d3748] rounded-md p-1 text-white w-full"
+                                />
+                              )}
+                            </td>
+
+                            <td className="px-3 py-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={row.isCharacterCard}
+                                onChange={(e) => updateRow(char.id, row.id, { isCharacterCard: e.target.checked })}
+                                className="accent-blue-500"
+                              />
+                            </td>
+
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={row.notes}
+                                onChange={(e) => updateRow(char.id, row.id, { notes: e.target.value })}
+                                className="bg-[#1e2533] border border-[#2d3748] rounded-md p-1 text-white w-full"
+                              />
+                            </td>
+
+                            <td className="px-3 py-2 text-blue-400 font-semibold">{pointsForRow(row, idxBefore)}</td>
+
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={() => removeRow(char.id, row.id)}
+                                className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded-md text-xs text-white"
+                              >
+                                X
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -239,21 +299,11 @@ export default function CznSaveDataCalculator() {
                   <p className="text-xs text-gray-400">Faint Memory Points</p>
                   <p className="text-2xl font-bold text-white">{totalPoints}</p>
                 </div>
-                <div
-                  className={`${
-                    overCap
-                      ? "bg-red-800 border-red-600"
-                      : "bg-green-700 border-green-600"
-                  } p-4 rounded-lg text-center border`}
-                >
+                <div className={`${overCap ? "bg-red-800 border-red-600" : "bg-green-700 border-green-600"} p-4 rounded-lg text-center border`}>
                   <p className="text-xs text-gray-100">Point Limit</p>
                   <p className="text-2xl font-bold text-white">{limit}</p>
                   <p className="text-xs text-gray-200">{overCap ? "Over the cap!" : "Within cap"}</p>
                 </div>
-              </div>
-
-              <div className="mt-6 border-t border-[#2d3748] pt-4">
-                <div className="w-full h-32 bg-[#0f1624] rounded-lg border border-[#2d3748]"></div>
               </div>
             </div>
           );
