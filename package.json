@@ -8,9 +8,11 @@
     "react-scripts": "5.0.1"
   },
   "devDependencies": {
-    "tailwindcss": "npm:@tailwindcss/postcss7-compat",
+    "ajv": "^8.17.1",
+    "ajv-keywords": "^5.1.0",
+    "autoprefixer": "^9.8.8",
     "postcss": "^7.0.39",
-    "autoprefixer": "^9.8.8"
+    "tailwindcss": "npm:@tailwindcss/postcss7-compat"
   },
   "engines": {
     "node": "22.x"
